@@ -2,11 +2,11 @@
  [
   {description, ""},
   {vsn, "1"},
+  {modules, [csv]},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib
                  ]},
-  {mod, { csv, []}},
   {env, []}
  ]}.
