@@ -179,6 +179,20 @@ parse_binary_line(Binary, Annot) ->
             {item, Other}
     end.
 
+raw_parse_binary_line(Binary, Annot) ->
+    case raw_parse_binary_line(Binary, <<>>, []) of
+        {comment, Rest} ->
+            raw_parse_binary_line(Rest, Annot);
+        {annotation, {Kv, Rest}} ->
+            if not(Annot) ->
+                    raw_parse_binary_line(Rest, Annot);
+               true ->
+                    {annotation, {Kv, Rest}}
+            end;
+        Other ->
+            {item, Other}
+    end.
+
 end_of_line(Rest, Str, Acc) ->
     Acc0 = case Str of
                <<>> ->
@@ -192,6 +206,21 @@ end_of_line(Rest, Str, Acc) ->
         FinalAcc ->
             {lists:reverse(FinalAcc), Rest}
     end.
+
+
+raw_parse_binary_line(<<$\n, Rest/binary>>, Str, Acc) ->
+    end_of_line(Rest, Str, Acc);
+raw_parse_binary_line(<<>>, Str, Acc) ->
+    end_of_line(<<>>, Str, Acc);
+raw_parse_binary_line(<<$\r, Rest/binary>>, Str, Acc) -> %% NOTE: skip \r
+    raw_parse_binary_line(Rest, Str, Acc);
+raw_parse_binary_line(<<$,, Rest/binary>>, Str, Acc) ->
+    raw_parse_binary_line(Rest, <<>>, [binary_to_list(Str)|Acc]);
+raw_parse_binary_line(<<I, Rest/binary>>, Str, Acc) ->
+    raw_parse_binary_line(Rest, <<Str/binary, I>>, Acc);
+raw_parse_binary_line(_, Str, Acc) ->
+    end_of_line(<<>>, Str, Acc).
+
 
 parse_binary_line(<<$%, Annotation, Rest/binary>>, _, _) ->
     case is_annotation(Annotation) of
@@ -213,7 +242,9 @@ parse_binary_line(<<$", Rest/binary>>, Str, Acc) ->
 parse_binary_line(<<$,, Rest/binary>>, Str, Acc) ->
     parse_binary_line(Rest, <<>>, [string:strip(binary_to_list(Str))|Acc]);
 parse_binary_line(<<I, Rest/binary>>, Str, Acc) ->
-    parse_binary_line(Rest, <<Str/binary, I>>, Acc).
+    parse_binary_line(Rest, <<Str/binary, I>>, Acc);
+parse_binary_line(_, Str, Acc) ->
+    end_of_line(<<>>, Str, Acc).
 
 parse_binary_string(<<$", $,, Rest/binary>>, Str, Acc) ->
     parse_binary_line(Rest, <<>>, [string:strip(binary_to_list(Str))|Acc]);
